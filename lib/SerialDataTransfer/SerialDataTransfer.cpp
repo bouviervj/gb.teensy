@@ -23,7 +23,7 @@
 void SerialDataTransfer::serialStep() {
     const uint8_t sc = Memory::readByte(MEM_SERIAL_SC);
     if ((sc & 0x81) == 0x81) {
-        Serial.print((char)Memory::readByte(MEM_SERIAL_SB));
-        Memory::writeByteInternal(MEM_SERIAL_SC, sc & 0x7F, true);
+        //Serial.print((char)Memory::readByte(MEM_SERIAL_SB));
+        Memory::writeByteInternal(MEM_SERIAL_SC, sc & 0x7F);
     }
 }

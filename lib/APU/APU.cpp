@@ -19,15 +19,17 @@
 
 #include "Memory.h"
 
+#ifndef PLATFORM_NATIVE
 // Use Teensyduino's IntervalTimer for all sound channels
 // Because as of v0.2.1 using Periodic Timers with TeensyTimerTool
 // did result in audible glitches when updating the channel's frequency
-IntervalTimer APU::frequencyTimer[];
+Timer<> APU::frequencyTimer[];
 
 // Use a General Purpose Timer for effects
-PeriodicTimer APU::effectTimer(GPT1);
+Timer<> APU::effectTimer = timer_create_default();
+#endif
 
-void (*APU::frequencyUpdate[])() = {APU::squareUpdate1, APU::squareUpdate2, APU::waveUpdate, APU::noiseUpdate};
+bool (*APU::frequencyUpdate[])(void*) = {APU::squareUpdate1, APU::squareUpdate2, APU::waveUpdate, APU::noiseUpdate};
 
 const uint8_t APU::duty[] = {0x01, 0x81, 0x87, 0x7E};
 
@@ -52,22 +54,25 @@ void APU::begin() {
 
     // Setup PWM resolution and frequency according to https://www.pjrc.com/teensy/td_pulse.html
     analogWriteResolution(8);
-    analogWriteFrequency(AUDIO_OUT_SQUARE1, 9375000);
-    analogWriteFrequency(AUDIO_OUT_SQUARE2, 9375000);
-    analogWriteFrequency(AUDIO_OUT_WAVE, 9375000);
-    analogWriteFrequency(AUDIO_OUT_NOISE, 9375000);
+    //analogWriteFrequency(AUDIO_OUT_SQUARE1, 9375000);
+    //analogWriteFrequency(AUDIO_OUT_SQUARE2, 9375000);
+    //analogWriteFrequency(AUDIO_OUT_WAVE, 9375000);
+    //analogWriteFrequency(AUDIO_OUT_NOISE, 9375000);
 
     analogWrite(AUDIO_OUT_SQUARE1, 0);
     analogWrite(AUDIO_OUT_SQUARE2, 0);
     analogWrite(AUDIO_OUT_WAVE, 0);
     analogWrite(AUDIO_OUT_NOISE, 0);
 
+#ifndef PLATFORM_NATIVE
     // Start effect timer
-    APU::effectTimer.begin(APU::effectUpdate, 1000000 / 256);
+    APU::effectTimer.every(1000000 / 256, APU::effectUpdate );
 
     for (uint8_t i = 0; i < 4; i++) {
-        APU::frequencyTimer[i].begin(APU::frequencyUpdate[i], 1000000);
+        APU::frequencyTimer[i] = timer_create_default();
+        APU::frequencyTimer[i].every(1000000, APU::frequencyUpdate[i] );
     }
+#endif
 }
 
 void APU::apuStep() {
@@ -85,7 +90,7 @@ void APU::apuStep() {
         for (uint8_t i = 0; i < 3; i++) {
             if (APU::currentFrequency[i] != frequency[i] && frequency[i] != 0) {
                 APU::currentFrequency[i] = frequency[i];
-                APU::frequencyTimer[i].update(1000000 / 8 / (uint32_t)frequency[i]);
+                // APU::frequencyTimer[i].update(1000000 / 8 / (uint32_t)frequency[i]);  // TODO implement update
             }
         }
 
@@ -94,13 +99,13 @@ void APU::apuStep() {
 
         if (APU::currentFrequency[Channel::noise] != noiseFreq && noiseFreq != 0) {
             APU::currentFrequency[Channel::noise] = noiseFreq;
-            APU::frequencyTimer[Channel::noise].update(1000000 / noiseFreq);
+            // APU::frequencyTimer[Channel::noise].update(1000000 / noiseFreq); // TODO implement update
         }
     } else {
-        APU::frequencyTimer[Channel::square1].update(1000000);
-        APU::frequencyTimer[Channel::square2].update(1000000);
-        APU::frequencyTimer[Channel::wave].update(1000000);
-        APU::frequencyTimer[Channel::noise].update(1000000);
+        //APU::frequencyTimer[Channel::square1].update(1000000);
+        //APU::frequencyTimer[Channel::square2].update(1000000);
+        //APU::frequencyTimer[Channel::wave].update(1000000);
+        //APU::frequencyTimer[Channel::noise].update(1000000);
         analogWrite(AUDIO_OUT_SQUARE1, 0);
         analogWrite(AUDIO_OUT_SQUARE2, 0);
         analogWrite(AUDIO_OUT_WAVE, 0);
@@ -108,7 +113,7 @@ void APU::apuStep() {
     }
 }
 
-void APU::squareUpdate1() {
+bool APU::squareUpdate1(void* arg) {
     const nrx1_register_t nrx1 = {.value = Memory::readByte(MEM_SOUND_NR11)};
     const nrx4_register_t nrx4 = {.value = Memory::readByte(MEM_SOUND_NR14)};
 
@@ -125,9 +130,10 @@ void APU::squareUpdate1() {
     } else {
         APU::disableSquare1();
     }
+    return true;
 }
 
-void APU::squareUpdate2() {
+bool APU::squareUpdate2(void*) {
     const nrx1_register_t nrx1 = {.value = Memory::readByte(MEM_SOUND_NR21)};
     const nrx4_register_t nrx4 = {.value = Memory::readByte(MEM_SOUND_NR24)};
 
@@ -144,9 +150,10 @@ void APU::squareUpdate2() {
     } else {
         APU::disableSquare2();
     }
+    return true;
 }
 
-void APU::waveUpdate() {
+bool APU::waveUpdate(void*) {
     const nrx4_register_t nrx4 = {.value = Memory::readByte(MEM_SOUND_NR34)};
 
     if (APU::dacEnabled[Channel::wave] && APU::channelEnabled[Channel::wave] && (!nrx4.bits.lengthEnable || APU::lengthCounter[Channel::wave] > 0)) {
@@ -165,9 +172,10 @@ void APU::waveUpdate() {
     } else {
         APU::disableWave();
     }
+    return true;
 }
 
-void APU::noiseUpdate() {
+bool APU::noiseUpdate(void*) {
     const nrx4_register_t nrx4 = {.value = Memory::readByte(MEM_SOUND_NR44)};
 
     if (APU::dacEnabled[Channel::noise] && APU::channelEnabled[Channel::noise] && (!nrx4.bits.lengthEnable || APU::lengthCounter[Channel::noise] > 0)) {
@@ -193,7 +201,7 @@ void APU::noiseUpdate() {
     }
 }
 
-void APU::effectUpdate() {
+bool APU::effectUpdate(void* arg) {
     APU::effectTimerCounter++;
 
     // Length update
@@ -236,8 +244,8 @@ void APU::effectUpdate() {
                 const uint16_t newFrequency = APU::sweepFrequency + (APU::sweepFrequency >> nr10.bits.shift) * (nr10.bits.direction ? -1 : 1);
                 if (newFrequency > 0 && newFrequency < 0x7FF) {
                     APU::sweepFrequency = newFrequency;
-                    Memory::writeByteInternal(MEM_SOUND_NR13, newFrequency & 0xF, true);
-                    Memory::writeByteInternal(MEM_SOUND_NR14, ((newFrequency >> 8) & 0x3) | (Memory::readByte(MEM_SOUND_NR14) & 0xFC), true);
+                    Memory::writeByteInternal(MEM_SOUND_NR13, newFrequency & 0xF);
+                    Memory::writeByteInternal(MEM_SOUND_NR14, ((newFrequency >> 8) & 0x3) | (Memory::readByte(MEM_SOUND_NR14) & 0xFC));
                 }
             }
         }
@@ -253,11 +261,11 @@ void APU::effectUpdate() {
                 if (envelope.bits.direction && envelope.bits.volume < 0xF) {
                     const nrx2_register_t newEnvelope = {
                         .bits = {.period = envelope.bits.period, .direction = envelope.bits.direction, .volume = envelope.bits.volume + 1U}};
-                    Memory::writeByteInternal(MEM_SOUND_NR12, newEnvelope.value, true);
+                    Memory::writeByteInternal(MEM_SOUND_NR12, newEnvelope.value);
                 } else if (!envelope.bits.direction && envelope.bits.volume > 0) {
                     const nrx2_register_t newEnvelope = {
                         .bits = {.period = envelope.bits.period, .direction = envelope.bits.direction, .volume = envelope.bits.volume - 1U}};
-                    Memory::writeByteInternal(MEM_SOUND_NR12, newEnvelope.value, true);
+                    Memory::writeByteInternal(MEM_SOUND_NR12, newEnvelope.value);
                 }
             }
         }
@@ -269,11 +277,11 @@ void APU::effectUpdate() {
                 if (envelope.bits.direction && envelope.bits.volume < 0xF) {
                     const nrx2_register_t newEnvelope = {
                         .bits = {.period = envelope.bits.period, .direction = envelope.bits.direction, .volume = envelope.bits.volume + 1U}};
-                    Memory::writeByteInternal(MEM_SOUND_NR22, newEnvelope.value, true);
+                    Memory::writeByteInternal(MEM_SOUND_NR22, newEnvelope.value);
                 } else if (!envelope.bits.direction && envelope.bits.volume > 0) {
                     const nrx2_register_t newEnvelope = {
                         .bits = {.period = envelope.bits.period, .direction = envelope.bits.direction, .volume = envelope.bits.volume - 1U}};
-                    Memory::writeByteInternal(MEM_SOUND_NR22, newEnvelope.value, true);
+                    Memory::writeByteInternal(MEM_SOUND_NR22, newEnvelope.value);
                 }
             }
         }
@@ -285,11 +293,11 @@ void APU::effectUpdate() {
                 if (envelope.bits.direction && envelope.bits.volume < 0xF) {
                     const nrx2_register_t newEnvelope = {
                         .bits = {.period = envelope.bits.period, .direction = envelope.bits.direction, .volume = envelope.bits.volume + 1U}};
-                    Memory::writeByteInternal(MEM_SOUND_NR42, newEnvelope.value, true);
+                    Memory::writeByteInternal(MEM_SOUND_NR42, newEnvelope.value);
                 } else if (!envelope.bits.direction && envelope.bits.volume > 0) {
                     const nrx2_register_t newEnvelope = {
                         .bits = {.period = envelope.bits.period, .direction = envelope.bits.direction, .volume = envelope.bits.volume - 1U}};
-                    Memory::writeByteInternal(MEM_SOUND_NR42, newEnvelope.value, true);
+                    Memory::writeByteInternal(MEM_SOUND_NR42, newEnvelope.value);
                 }
             }
         }

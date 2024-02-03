@@ -20,6 +20,8 @@
 #pragma once
 
 #include <Arduino.h>
+#ifndef PLATFORM_NATIVE
+#include <TouchScreen.h>
 
 #define JOYPAD_START  16
 #define JOYPAD_SELECT 17
@@ -29,6 +31,8 @@
 #define JOYPAD_DOWN   21
 #define JOYPAD_B      22
 #define JOYPAD_A      23
+
+#endif
 
 typedef union {
     struct {
@@ -67,6 +71,11 @@ class Joypad {
 
    protected:
     static joypad_combined_t previousValue;
+#ifndef PLATFORM_NATIVE
+    static TouchScreen ts;
+#endif
 
    private:
+    static uint32_t _cycle;
+    static bool _press_value;
 };

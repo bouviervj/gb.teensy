@@ -48,7 +48,6 @@ MBC1::MBC1(const char *romFile) : ACartridge(romFile) {
     } else {
         Serial.printf("Could not open rom file %s\n", romFile);
     }
-    Serial.println();
     Serial.println("ROM Loaded!");
 
     // Allocate memory for the RAM banks

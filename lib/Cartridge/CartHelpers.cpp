@@ -117,6 +117,8 @@ uint8_t lookupMbcType(uint8_t code) {
     }
 }
 
+#define BUILTIN_SDCARD 32
+
 uint8_t lookupMbcTypeFromCart(const char* romFile) {
     Serial.println("Initializing SD card...");
     uint8_t ret;

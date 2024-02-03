@@ -19,12 +19,22 @@
 #pragma once
 
 #include <Arduino.h>
-#include <FT81x.h>
+//#include <FT81x.h>
+#ifndef PLATFORM_NATIVE
+#include "Adafruit_ILI9341.h"
+#endif
 #include <Memory.h>
 
 class PPU {
    public:
-    static void ppuStep(FT81x &ft81x);
+
+#ifndef PLATFORM_NATIVE
+   static void ppuStep(Adafruit_ILI9341 &tft);
+#else
+   static void ppuStep();
+#endif
+
+   static uint64_t fps_count;
 
    protected:
     // Handle to Memory
@@ -37,6 +47,8 @@ class PPU {
     static void getSpritesForLine(const uint8_t y, uint16_t *frame);
     static void getWindowForLine(const uint8_t y, uint16_t *frame);
     static void mapColorsForFrame(uint16_t *frame);
+
+
 
    private:
 };

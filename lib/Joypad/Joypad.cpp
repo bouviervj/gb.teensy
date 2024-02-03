@@ -20,31 +20,54 @@
 
 #include "Memory.h"
 
+#define YP A4
+#define XM A7
+#define YM A6
+#define XP A5
+
 joypad_combined_t Joypad::previousValue = {.value = 0xFF};
+#ifndef PLATFORM_NATIVE
+TouchScreen Joypad::ts = TouchScreen(XP, YP, XM, YM, 300);
+#endif
+uint32_t Joypad::_cycle = 0;
+bool Joypad::_press_value = false;
 
 void Joypad::begin() {
-    pinMode(JOYPAD_START, INPUT_PULLUP);
-    pinMode(JOYPAD_SELECT, INPUT_PULLUP);
-    pinMode(JOYPAD_LEFT, INPUT_PULLUP);
-    pinMode(JOYPAD_RIGHT, INPUT_PULLUP);
-    pinMode(JOYPAD_UP, INPUT_PULLUP);
-    pinMode(JOYPAD_DOWN, INPUT_PULLUP);
-    pinMode(JOYPAD_B, INPUT_PULLUP);
-    pinMode(JOYPAD_A, INPUT_PULLUP);
+
+    //pinMode(JOYPAD_START, INPUT_PULLUP);
+    //pinMode(JOYPAD_SELECT, INPUT_PULLUP);
+    //pinMode(JOYPAD_LEFT, INPUT_PULLUP);
+    //pinMode(JOYPAD_RIGHT, INPUT_PULLUP);
+    //pinMode(JOYPAD_UP, INPUT_PULLUP);
+    //pinMode(JOYPAD_DOWN, INPUT_PULLUP);
+    //pinMode(JOYPAD_B, INPUT_PULLUP);
+    //pinMode(JOYPAD_A, INPUT_PULLUP);
 }
 
 void Joypad::joypadStep() {
     joypad_register_t joypad = {.value = Memory::readByte(MEM_JOYPAD)};
 
+    #ifndef PLATFORM_NATIVE
+    _cycle++; 
+    int value = _cycle % 1000 == 0 ? ts.pressure() : 0;
+    if (_cycle % 1000 == 0) {
+        //Serial.printf("press:");Serial.println(value);
+        _press_value = value>100 && value < 1000;
+        if (_press_value) {
+            Serial.printf("Button pressed:");Serial.println(joypad.value, BIN);
+        }
+    }
+    #endif
+
     // Handle direction key input
     // Interrupts are also handled inside this condition!
     if (joypad.direction.selectDirection == 0) {
-        joypad.direction.left = digitalReadFast(JOYPAD_LEFT);
-        joypad.direction.right = digitalReadFast(JOYPAD_RIGHT);
-        joypad.direction.up = digitalReadFast(JOYPAD_UP);
-        joypad.direction.down = digitalReadFast(JOYPAD_DOWN);
+        joypad.direction.left = HIGH;
+        joypad.direction.right = HIGH;
+        joypad.direction.up = HIGH;
+        joypad.direction.down = HIGH;
 
-        Memory::writeByteInternal(MEM_JOYPAD, joypad.value, true);
+        Memory::writeByteInternal(MEM_JOYPAD, joypad.value);
 
         if ((joypad.value & 0xF) != 0xF && Joypad::previousValue.parts.direction != (joypad.value & 0xF)) {
             Memory::interrupt(IRQ_JOYPAD);
@@ -55,12 +78,13 @@ void Joypad::joypadStep() {
     // Handle button key input
     // Interrupts are also handled inside this condition!
     if (joypad.button.selectButton == 0) {
-        joypad.button.start = digitalReadFast(JOYPAD_START);
-        joypad.button.select = digitalReadFast(JOYPAD_SELECT);
-        joypad.button.a = digitalReadFast(JOYPAD_A);
-        joypad.button.b = digitalReadFast(JOYPAD_B);
+        joypad.button.start = _press_value ? LOW : HIGH;
+        joypad.button.select = HIGH;
+        joypad.button.a = HIGH;
+        joypad.button.b = HIGH;
+        //joypad.button.start = press ? HIGH : LOW;
 
-        Memory::writeByteInternal(MEM_JOYPAD, joypad.value, true);
+        Memory::writeByteInternal(MEM_JOYPAD, joypad.value);
 
         if ((joypad.value & 0xF) != 0xF && Joypad::previousValue.parts.button != (joypad.value & 0xF)) {
             Memory::interrupt(IRQ_JOYPAD);

@@ -262,9 +262,14 @@ class Memory {
    public:
     static void initMemory();
 
+    //static void writeByte(const uint16_t location, const uint8_t data);
     static void writeByte(const uint16_t location, const uint8_t data);
-    static void writeByteInternal(const uint16_t location, const uint8_t data, const bool internal);
+    static void writeByteInternal(const uint16_t location, const uint8_t data);
+
     static uint8_t readByte(const uint16_t location);
+    static uint16_t readWord(const uint16_t location);
+
+    static uint8_t readByteIORegFast(const uint16_t location);
 
     static void interrupt(const uint8_t flag);
 
@@ -277,17 +282,20 @@ class Memory {
     static uint8_t vram[0x2000];
     // Work RAM (both banks)
     // Addr: MEM_RAM_INTERNAL
-    static uint8_t wram[0x2000];
+    
+    //static uint8_t wram[0x2000];
+    static uint8_t wram[0x4000];
+
     // Sprite Attribute Table (OAM)
     // Addr: MEM_SPRITE_ATTR_TABLE
     static uint8_t oam[0xA0];
     // I/O Registers
     // Addr: MEM_IO_REGS
-    static uint8_t ioreg[0x80];
+    //static uint8_t ioreg[0x80];
     // High RAM
     // Addr: MEM_HIGH_RAM
-    static uint8_t hram[0x7F];
+    //static uint8_t hram[0x7F];
     // Interrupt Enable Register (IE)
     // Addr: MEM_INT_EN_REG
-    static uint8_t iereg;
+    //static uint8_t iereg;
 };

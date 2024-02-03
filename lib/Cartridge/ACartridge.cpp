@@ -19,8 +19,10 @@
 
 #include <Arduino.h>
 #include <SD.h>
-#include <SPI.h>
+//#include <SPI.h>
 #include <stdlib.h>
+
+#define BUILTIN_SDCARD 32
 
 ACartridge::ACartridge(const char* romFile) {
     Serial.println("Initializing SD card...");

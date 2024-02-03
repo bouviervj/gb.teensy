@@ -19,7 +19,7 @@
 
 #include <Arduino.h>
 #include <SD.h>
-#include <SPI.h>
+//#include <SPI.h>
 #include <stdlib.h>
 
 NoMBC::NoMBC(const char *romFile) : ACartridge(romFile) {
@@ -57,7 +57,7 @@ NoMBC::NoMBC(const uint8_t *data) : ACartridge(data) {
     Serial.println("Loading ROM into memory...");
     memcpy(rom, data, ROM_BANK_SIZE * 2 * sizeof(uint8_t));
     Serial.println();
-    Serial.println("ROM Loaded!");
+    Serial.println("ROM Loaded! (NoMBC)");
 
     // Allocate space for the RAM, if any
     if (ramSize != 0x0) {
@@ -71,6 +71,7 @@ NoMBC::NoMBC(const uint8_t *data) : ACartridge(data) {
 NoMBC::~NoMBC() { Serial.println("Deleting NoMBC"); }
 
 uint8_t NoMBC::readByte(uint16_t addr) {
+    Serial.print("readByte NoMBC:"); Serial.print(addr, HEX);Serial.println();
     if (addr >= CART_RAM) {
         if (ramSize != 0) {
             return ram[addr - CART_RAM];

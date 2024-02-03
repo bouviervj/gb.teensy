@@ -19,13 +19,14 @@
 #pragma once
 
 #include <Arduino.h>
-#include <TeensyTimerTool.h>
 
-using namespace TeensyTimerTool;
+#ifndef PLATFORM_NATIVE
+#include <arduino-timer.h>
+#endif
 
-#define AUDIO_OUT_SQUARE1 7
-#define AUDIO_OUT_SQUARE2 6
-#define AUDIO_OUT_WAVE    5
+#define AUDIO_OUT_SQUARE1 3
+#define AUDIO_OUT_SQUARE2 2
+#define AUDIO_OUT_WAVE    3
 #define AUDIO_OUT_NOISE   4
 
 typedef union {
@@ -134,10 +135,12 @@ class APU {
    protected:
     enum Channel { square1, square2, wave, noise };
 
-    static IntervalTimer frequencyTimer[4];
-    static PeriodicTimer effectTimer;
+#ifndef PLATFORM_NATIVE
+    static Timer<> frequencyTimer[4];
+    static Timer<> effectTimer;
+#endif
 
-    static void (*frequencyUpdate[4])();
+    static bool (*frequencyUpdate[4])(void*);
 
     const static uint8_t duty[4];
     const static uint8_t divisor[8];
@@ -153,11 +156,11 @@ class APU {
     volatile static uint8_t effectTimerCounter;
     volatile static uint16_t noiseRegister;
 
-    static void squareUpdate1();
-    static void squareUpdate2();
-    static void waveUpdate();
-    static void noiseUpdate();
-    static void effectUpdate();
+    static bool squareUpdate1(void* arg);
+    static bool squareUpdate2(void* arg);
+    static bool waveUpdate(void* arg);
+    static bool noiseUpdate(void* arg);
+    static bool effectUpdate(void* arg);
     static void disableSquare1();
     static void disableSquare2();
     static void disableWave();

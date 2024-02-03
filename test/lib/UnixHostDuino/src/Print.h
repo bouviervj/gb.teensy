@@ -232,7 +232,7 @@ class Print {
         n += println();
         return n;
     }
-    size_t println() { return write("\r\n"); }
+    size_t println() { return write("\n"); } // Unix vs windows
 
     // printf() extension supported by many microcontrollers including
     // Teensy, ESP8266 and ESP32 (but not AVR).
